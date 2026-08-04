@@ -1,26 +1,175 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
   --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* MedCards custom colors */
+  --color-med-primary: #e94560;
+  --color-med-bg: #16213e;
+  --color-med-card: #1a1a2e;
+  --color-med-input: #252a4a;
+  --color-med-button: #252540;
+  --color-med-cyan: #00d9ff;
+  --color-med-green: #00c853;
+  --color-med-blue: #2979ff;
+  --color-med-orange: #ff9f43;
+  --color-med-text-secondary: #a0a0a0;
+  --color-med-text-tertiary: #666666;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  --background: #16213e;
+  --foreground: #ffffff;
+  --card: #1a1a2e;
+  --card-foreground: #ffffff;
+  --popover: #1a1a2e;
+  --popover-foreground: #ffffff;
+  --primary: #e94560;
+  --primary-foreground: #ffffff;
+  --secondary: #252a4a;
+  --secondary-foreground: #ffffff;
+  --muted: #252540;
+  --muted-foreground: #a0a0a0;
+  --accent: #252a4a;
+  --accent-foreground: #ffffff;
+  --destructive: #e94560;
+  --border: #252a4a;
+  --input: #252a4a;
+  --ring: #e94560;
+  --chart-1: #e94560;
+  --chart-2: #00d9ff;
+  --chart-3: #00c853;
+  --chart-4: #ff9f43;
+  --chart-5: #2979ff;
+  --radius: 0.75rem;
+  --sidebar: #1a1a2e;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #e94560;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #252a4a;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #252a4a;
+  --sidebar-ring: #e94560;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Card HTML content styling (from Supabase) */
+.card-content {
+  line-height: 1.6;
+}
+
+.card-content b,
+.card-content strong {
+  color: #e94560;
+  font-weight: 700;
+}
+
+.card-content i,
+.card-content em {
+  color: #00d9ff;
+}
+
+.card-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 8px 0;
+}
+
+.card-content ul,
+.card-content ol {
+  padding-left: 1.5rem;
+  margin: 8px 0;
+}
+
+.card-content li {
+  margin: 4px 0;
+}
+
+/* Mobile-first: max width container for desktop */
+@media (min-width: 640px) {
+  .app-container {
+    max-width: 430px;
+    margin: 0 auto;
+  }
+}
+
+/* PWA safe area padding */
+.safe-area-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Smooth page transitions */
+.page-transition {
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
