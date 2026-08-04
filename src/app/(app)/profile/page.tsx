@@ -1,27 +1,13 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Trophy, LogOut, Pencil, Check, X, Wifi, WifiOff } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { StatsCard } from "@/components/common/stats-card";
-
-// --- Mock Data ---
-const MOCK_USER = {
-  id: "user-me",
-  displayName: "Rafael Lima",
-  email: "rafael.lima@email.com",
-  avatarUrl: null as string | null,
-  syncStatus: "synced" as "synced" | "pending" | "offline",
-};
-
-const MOCK_STATS = {
-  today: 23,
-  streak: 14,
-  learned: 342,
-  total: 1250,
-  points: 2840,
-  averageEase: 2.65,
-};
+import { useAuthStore } from "@/store/authStore";
+import { useReviewStore } from "@/stores/review-store";
+import { createClient } from "@/lib/supabase/client";
 
 function getEaseColor(ease: number): string {
   if (ease >= 3.0) return "#00c853";
@@ -42,37 +28,74 @@ function getInitial(name: string): string {
 }
 
 export default function ProfilePage() {
-  const [displayName, setDisplayName] = useState(MOCK_USER.displayName);
+  const router = useRouter();
+  const { user, displayName: storeDisplayName, signOut, fetchDisplayName } = useAuthStore();
+  const { stats, isSyncing } = useReviewStore();
+
+  const [displayName, setDisplayName] = useState(storeDisplayName ?? "");
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(displayName);
+  const [isSaving, setIsSaving] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
-  const handleSaveName = useCallback(() => {
-    const trimmed = editValue.trim();
-    if (trimmed.length >= 2 && trimmed.length <= 30) {
-      setDisplayName(trimmed);
-      setIsEditing(false);
+  // Sync local displayName with store when store updates
+  useEffect(() => {
+    if (storeDisplayName) {
+      setDisplayName(storeDisplayName);
+      setEditValue(storeDisplayName);
     }
-  }, [editValue]);
+  }, [storeDisplayName]);
+
+  // Calculate points from stats
+  const points = stats.totalReviews * 10 + stats.streak * 50;
+
+  const handleSaveName = useCallback(async () => {
+    const trimmed = editValue.trim();
+    if (trimmed.length < 2 || trimmed.length > 30) return;
+    if (!user) return;
+
+    setIsSaving(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("profiles")
+        .update({ display_name: trimmed, full_name: trimmed })
+        .eq("id", user.id);
+
+      if (!error) {
+        setDisplayName(trimmed);
+        setIsEditing(false);
+        // Refresh display name in auth store
+        await fetchDisplayName();
+      } else {
+        console.error("Failed to update display name:", error);
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  }, [editValue, user, fetchDisplayName]);
 
   const handleCancelEdit = useCallback(() => {
     setEditValue(displayName);
     setIsEditing(false);
   }, [displayName]);
 
-  const syncIcon =
-    MOCK_USER.syncStatus === "synced" ? (
-      <Wifi className="h-3.5 w-3.5 text-[#00c853]" />
-    ) : (
-      <WifiOff className="h-3.5 w-3.5 text-[#ff9f43]" />
-    );
+  const handleSignOut = useCallback(async () => {
+    setShowLogoutConfirm(false);
+    await signOut();
+    router.push("/login");
+  }, [signOut, router]);
 
-  const syncLabel =
-    MOCK_USER.syncStatus === "synced"
-      ? "Sincronizado"
-      : MOCK_USER.syncStatus === "pending"
-        ? "Sincronizando..."
-        : "Offline";
+  const syncIcon = isSyncing ? (
+    <WifiOff className="h-3.5 w-3.5 text-[#ff9f43]" />
+  ) : (
+    <Wifi className="h-3.5 w-3.5 text-[#00c853]" />
+  );
+
+  const syncLabel = isSyncing ? "Sincronizando..." : "Sincronizado";
+
+  const nameToShow = displayName || user?.email?.split("@")[0] || "Usuário";
+  const emailToShow = user?.email ?? "";
 
   return (
     <div className="page-transition flex flex-col pb-8">
@@ -84,7 +107,7 @@ export default function ProfilePage() {
       {/* Avatar & name */}
       <div className="flex flex-col items-center px-4">
         <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#e94560] text-3xl font-bold text-white">
-          {getInitial(displayName)}
+          {getInitial(nameToShow)}
         </div>
 
         {/* Name */}
@@ -97,16 +120,19 @@ export default function ProfilePage() {
               className="h-8 w-40 rounded-lg bg-[#252a4a] px-3 text-center text-sm text-white outline-none focus:ring-1 focus:ring-[#e94560]/50"
               maxLength={30}
               autoFocus
+              disabled={isSaving}
             />
             <button
               onClick={handleSaveName}
-              className="flex h-7 w-7 items-center justify-center rounded-full bg-[#00c853]/20 text-[#00c853]"
+              disabled={isSaving}
+              className="flex h-7 w-7 items-center justify-center rounded-full bg-[#00c853]/20 text-[#00c853] disabled:opacity-50"
             >
               <Check className="h-3.5 w-3.5" />
             </button>
             <button
               onClick={handleCancelEdit}
-              className="flex h-7 w-7 items-center justify-center rounded-full bg-[#e94560]/20 text-[#e94560]"
+              disabled={isSaving}
+              className="flex h-7 w-7 items-center justify-center rounded-full bg-[#e94560]/20 text-[#e94560] disabled:opacity-50"
             >
               <X className="h-3.5 w-3.5" />
             </button>
@@ -119,13 +145,13 @@ export default function ProfilePage() {
             }}
             className="mt-3 flex items-center gap-1.5 text-lg font-semibold text-white"
           >
-            {displayName}
+            {nameToShow}
             <Pencil className="h-3.5 w-3.5 text-[#666]" />
           </button>
         )}
 
         {/* Email */}
-        <p className="mt-1 text-xs text-[#a0a0a0]">{MOCK_USER.email}</p>
+        <p className="mt-1 text-xs text-[#a0a0a0]">{emailToShow}</p>
 
         {/* Sync status */}
         <div className="mt-2 flex items-center gap-1.5">
@@ -143,7 +169,7 @@ export default function ProfilePage() {
         <div className="flex flex-1 flex-col">
           <span className="text-xs text-[#a0a0a0]">Seus pontos</span>
           <span className="text-xl font-bold text-[#00d9ff]">
-            {MOCK_STATS.points.toLocaleString()}
+            {points.toLocaleString()}
           </span>
         </div>
         <span className="text-xs text-[#666]">Ver ranking →</span>
@@ -151,10 +177,10 @@ export default function ProfilePage() {
 
       {/* Stats grid */}
       <div className="mt-4 grid grid-cols-2 gap-3 px-4">
-        <StatsCard label="Hoje" value={MOCK_STATS.today} color="#e94560" />
-        <StatsCard label="Sequência" value={`${MOCK_STATS.streak}d`} color="#ff9f43" />
-        <StatsCard label="Aprendidos" value={MOCK_STATS.learned} color="#00d9ff" />
-        <StatsCard label="Total" value={MOCK_STATS.total} color="#2979ff" />
+        <StatsCard label="Hoje" value={stats.todayReviews} color="#e94560" />
+        <StatsCard label="Sequência" value={`${stats.streak}d`} color="#ff9f43" />
+        <StatsCard label="Aprendidos" value={stats.cardsLearned} color="#00d9ff" />
+        <StatsCard label="Total revisões" value={stats.totalReviews} color="#2979ff" />
       </div>
 
       {/* Average ease */}
@@ -163,17 +189,17 @@ export default function ProfilePage() {
           <span className="text-xs text-[#a0a0a0]">Facilidade média</span>
           <span
             className="text-xs font-medium"
-            style={{ color: getEaseColor(MOCK_STATS.averageEase) }}
+            style={{ color: getEaseColor(stats.averageEase) }}
           >
-            {getEaseLabel(MOCK_STATS.averageEase)}
+            {getEaseLabel(stats.averageEase)}
           </span>
         </div>
         <div className="mt-2 flex items-end gap-2">
           <span
             className="text-2xl font-bold"
-            style={{ color: getEaseColor(MOCK_STATS.averageEase) }}
+            style={{ color: getEaseColor(stats.averageEase) }}
           >
-            {MOCK_STATS.averageEase.toFixed(2)}
+            {stats.averageEase.toFixed(2)}
           </span>
           <span className="mb-0.5 text-xs text-[#666]">/ 4.00</span>
         </div>
@@ -182,8 +208,8 @@ export default function ProfilePage() {
           <div
             className="h-full rounded-full transition-all"
             style={{
-              width: `${(MOCK_STATS.averageEase / 4) * 100}%`,
-              backgroundColor: getEaseColor(MOCK_STATS.averageEase),
+              width: `${(stats.averageEase / 4) * 100}%`,
+              backgroundColor: getEaseColor(stats.averageEase),
             }}
           />
         </div>
@@ -204,10 +230,7 @@ export default function ProfilePage() {
                 Cancelar
               </button>
               <button
-                onClick={() => {
-                  // Will connect to Supabase auth signOut
-                  setShowLogoutConfirm(false);
-                }}
+                onClick={handleSignOut}
                 className="flex-1 rounded-lg bg-[#e94560] py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#e94560]/80"
               >
                 Sair
