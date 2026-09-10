@@ -228,16 +228,25 @@ export const useReviewStore = create<ReviewStoreState>()(
         set({ isSyncing: true });
         try {
           const supabase = createClient();
-          const [stateResult, daysResult] = await Promise.all([
-            supabase
+          // user_card_state cresce com o número de cards: paginar (PostgREST devolve no máximo 1000 linhas)
+          const stateRows: Record<string, unknown>[] = [];
+          let stateError: unknown = null;
+          for (let from = 0; ; from += 1000) {
+            const { data, error } = await supabase
               .from('user_card_state')
               .select('card_id, ease_factor, interval_days, repetitions, next_review, last_quality, total_reviews, correct_count, updated_at')
-              .eq('user_id', userId),
-            supabase
-              .from('daily_stats')
-              .select('date, cards_studied, correct, incorrect')
-              .eq('user_id', userId),
-          ]);
+              .eq('user_id', userId)
+              .order('card_id')
+              .range(from, from + 999);
+            if (error) { stateError = error; break; }
+            stateRows.push(...(data ?? []));
+            if ((data ?? []).length < 1000) break;
+          }
+          const stateResult = { data: stateRows, error: stateError };
+          const daysResult = await supabase
+            .from('daily_stats')
+            .select('date, cards_studied, correct, incorrect')
+            .eq('user_id', userId);
 
           if (stateResult.error) {
             console.error('Failed to fetch reviews from cloud:', stateResult.error);

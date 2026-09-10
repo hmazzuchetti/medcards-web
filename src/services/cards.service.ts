@@ -7,6 +7,26 @@
 import { createClient } from '@/lib/supabase/client';
 import type { Card, Category, Subcategory } from '@/types';
 
+/** PostgREST devolve no máximo 1000 linhas por requisição; buscamos em páginas até acabar. */
+const PAGE_SIZE = 1000;
+
+type PagedQuery<T> = (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>;
+
+async function fetchAllPages<T>(label: string, query: PagedQuery<T>): Promise<T[]> {
+  const rows: T[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await query(from, from + PAGE_SIZE - 1);
+    if (error) {
+      console.error(`${label} error:`, error);
+      break;
+    }
+    const page = data ?? [];
+    rows.push(...page);
+    if (page.length < PAGE_SIZE) break;
+  }
+  return rows;
+}
+
 export interface CategoryWithCards {
   category: Category;
   cardIds: string[];
@@ -59,17 +79,19 @@ export async function fetchSubcategoriesWithCards(): Promise<SubcategoryWithCard
 
   if (subcategories.length === 0) return [];
 
-  // Fetch all card IDs grouped by subcategory
+  // Fetch all card IDs grouped by subcategory (paginated: can exceed 1000 rows)
   const subcatIds = subcategories.map(s => s.id as string);
-  const { data: cards, error: cardsError } = await supabase
-    .from('cards')
-    .select('id, subcategory_id')
-    .in('subcategory_id', subcatIds)
-    .eq('is_active', true);
-
-  if (cardsError) {
-    console.error('fetchSubcategoriesWithCards cards error:', cardsError);
-  }
+  const cards = await fetchAllPages<{ id: string; subcategory_id: string }>(
+    'fetchSubcategoriesWithCards cards',
+    (from, to) =>
+      supabase
+        .from('cards')
+        .select('id, subcategory_id')
+        .in('subcategory_id', subcatIds)
+        .eq('is_active', true)
+        .order('id')
+        .range(from, to)
+  );
 
   const catMap: Record<string, string> = {};
   for (const cat of categories) {
@@ -110,18 +132,17 @@ export async function fetchCategoryCardIds(categoryId: string): Promise<string[]
 
   const subcatIds = subcats.map(s => s.id as string);
 
-  const { data: cards, error } = await supabase
-    .from('cards')
-    .select('id')
-    .in('subcategory_id', subcatIds)
-    .eq('is_active', true);
+  const cards = await fetchAllPages<{ id: string }>('fetchCategoryCardIds', (from, to) =>
+    supabase
+      .from('cards')
+      .select('id')
+      .in('subcategory_id', subcatIds)
+      .eq('is_active', true)
+      .order('id')
+      .range(from, to)
+  );
 
-  if (error) {
-    console.error('fetchCategoryCardIds error:', error);
-    return [];
-  }
-
-  return (cards ?? []).map(c => c.id as string);
+  return cards.map(c => c.id);
 }
 
 /**
@@ -172,18 +193,17 @@ export async function fetchEnabledCards(subcategoryIds: string[]): Promise<Card[
 
   for (let i = 0; i < subcategoryIds.length; i += batchSize) {
     const batch = subcategoryIds.slice(i, i + batchSize);
-    const { data, error } = await supabase
-      .from('cards')
-      .select('*')
-      .in('subcategory_id', batch)
-      .eq('is_active', true)
-      .order('created_at');
-
-    if (error) {
-      console.error('fetchEnabledCards error:', error);
-      continue;
-    }
-    if (data) allCards.push(...(data as Card[]));
+    const rows = await fetchAllPages<Card>('fetchEnabledCards', (from, to) =>
+      supabase
+        .from('cards')
+        .select('*')
+        .in('subcategory_id', batch)
+        .eq('is_active', true)
+        .order('created_at')
+        .order('id')
+        .range(from, to)
+    );
+    allCards.push(...rows);
   }
 
   return allCards;
