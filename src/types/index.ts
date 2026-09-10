@@ -42,23 +42,33 @@ export interface SubcategoryWithCategory extends Subcategory {
   category_name: string;
 }
 
-// --- Review Domain (SM-2) ---
+// --- Review Domain (Anki-style scheduler, see src/lib/scheduler.ts) ---
 
-export type ReviewQuality = 1 | 2 | 3 | 4;
+export type { ReviewQuality, CardPhase, CardState } from "@/lib/scheduler";
+import type { CardState as _CardState } from "@/lib/scheduler";
 
-export interface CardReview {
+export interface CardReview extends _CardState {
   cardId: string;
-  ease: number;
-  interval: number;
-  repetitions: number;
-  dueDate: string;
+  /** Study-day key (YYYY-MM-DD) of the last answer */
   lastReview: string;
+  /** ISO datetime of the last answer (used for cloud merge) */
+  updatedAt: string;
+  /** Number of answers that were not "Errei" */
+  correctCount: number;
   synced: boolean;
+}
+
+export interface DayStats {
+  count: number;
+  correct: number;
+  incorrect: number;
 }
 
 export interface ReviewStats {
   totalReviews: number;
   todayReviews: number;
+  todayCorrect: number;
+  todayIncorrect: number;
   cardsLearned: number;
   averageEase: number;
   streak: number;

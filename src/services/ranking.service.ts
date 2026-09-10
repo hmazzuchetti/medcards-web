@@ -63,7 +63,7 @@ export async function fetchLeaderboard(currentUserId: string | undefined): Promi
     // Fetch display names from profiles
     const { data: profilesData, error: profilesError } = await supabase
       .from('profiles')
-      .select('id, display_name, full_name')
+      .select('id, display_name')
       .in('id', userIds);
 
     if (profilesError) {
@@ -72,7 +72,7 @@ export async function fetchLeaderboard(currentUserId: string | undefined): Promi
 
     const profileMap: Record<string, string> = {};
     for (const p of profilesData ?? []) {
-      const name = (p.display_name as string | null) ?? (p.full_name as string | null) ?? 'Anônimo';
+      const name = (p.display_name as string | null) ?? 'Anônimo';
       profileMap[p.id as string] = name;
     }
 
@@ -124,9 +124,9 @@ async function fetchFallback(
         .eq('user_id', currentUserId),
       supabase
         .from('profiles')
-        .select('display_name, full_name')
+        .select('display_name')
         .eq('id', currentUserId)
-        .single<{ display_name: string | null; full_name: string | null }>(),
+        .maybeSingle<{ display_name: string | null }>(),
     ]);
 
     const totalCards = (statsResult.data ?? []).reduce(
@@ -134,10 +134,7 @@ async function fetchFallback(
       0
     );
 
-    const displayName =
-      profileResult.data?.display_name ??
-      profileResult.data?.full_name ??
-      'Você';
+    const displayName = profileResult.data?.display_name ?? 'Você';
 
     const entry: LeaderboardEntry = {
       rank: 1,

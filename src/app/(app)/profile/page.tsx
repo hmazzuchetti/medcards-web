@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { Trophy, LogOut, Pencil, Check, X, Wifi, WifiOff } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -33,19 +33,11 @@ export default function ProfilePage() {
   const { user, displayName: storeDisplayName, signOut, fetchDisplayName } = useAuthStore();
   const { stats, isSyncing } = useReviewStore();
 
-  const [displayName, setDisplayName] = useState(storeDisplayName ?? "");
+  const displayName = storeDisplayName ?? "";
   const [isEditing, setIsEditing] = useState(false);
-  const [editValue, setEditValue] = useState(displayName);
+  const [editValue, setEditValue] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-
-  // Sync local displayName with store when store updates
-  useEffect(() => {
-    if (storeDisplayName) {
-      setDisplayName(storeDisplayName);
-      setEditValue(storeDisplayName);
-    }
-  }, [storeDisplayName]);
 
   // Calculate points from stats
   const points = stats.totalReviews * 10 + stats.streak * 50;
@@ -60,11 +52,10 @@ export default function ProfilePage() {
       const supabase = createClient();
       const { error } = await supabase
         .from("profiles")
-        .update({ display_name: trimmed, full_name: trimmed })
+        .update({ display_name: trimmed })
         .eq("id", user.id);
 
       if (!error) {
-        setDisplayName(trimmed);
         setIsEditing(false);
         await fetchDisplayName();
       } else {
@@ -190,10 +181,10 @@ export default function ProfilePage() {
 
       {/* Stats grid */}
       <div className="mt-4 grid grid-cols-2 gap-3 px-4">
-        <StatsCard label="Hoje" value={stats.todayReviews} color="#e94560" delay={0.12} />
-        <StatsCard label="Sequência" value={`${stats.streak}d`} color="#ff9f43" delay={0.2} />
-        <StatsCard label="Aprendidos" value={stats.cardsLearned} color="#00d9ff" delay={0.28} />
-        <StatsCard label="Total revisões" value={stats.totalReviews} color="#2979ff" delay={0.36} />
+        <StatsCard label="Hoje" value={stats.todayReviews} color="#e94560" delay={0.12} testId="stat-hoje" />
+        <StatsCard label="Sequência" value={`${stats.streak}d`} color="#ff9f43" delay={0.2} testId="stat-sequencia" />
+        <StatsCard label="Aprendidos" value={stats.cardsLearned} color="#00d9ff" delay={0.28} testId="stat-aprendidos" />
+        <StatsCard label="Total revisões" value={stats.totalReviews} color="#2979ff" delay={0.36} testId="stat-total" />
       </div>
 
       {/* Average ease */}

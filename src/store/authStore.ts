@@ -112,12 +112,15 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       }
 
       if (data.user) {
-        // Create profile record
-        await supabase.from('profiles').upsert({
-          id: data.user.id,
-          email: data.user.email ?? email,
-          full_name: fullName,
-        });
+        // The `handle_new_user` trigger creates the profile row from
+        // raw_user_meta_data.full_name; make sure display_name is set when
+        // the session is already active (email confirmation disabled).
+        if (data.session) {
+          await supabase
+            .from('profiles')
+            .update({ display_name: fullName })
+            .eq('id', data.user.id);
+        }
 
         set({
           user: data.user,
@@ -152,12 +155,12 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     const supabase = createClient();
     const { data } = await supabase
       .from('profiles')
-      .select('full_name')
+      .select('display_name')
       .eq('id', user.id)
-      .single<{ full_name: string | null }>();
+      .maybeSingle<{ display_name: string | null }>();
 
-    if (data?.full_name) {
-      set({ displayName: data.full_name });
+    if (data?.display_name) {
+      set({ displayName: data.display_name });
     }
   },
 }));

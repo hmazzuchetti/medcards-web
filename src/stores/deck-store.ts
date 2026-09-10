@@ -2,9 +2,11 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { dateKey } from '@/lib/scheduler';
 
+/** Study-day key (local time, Anki-style 4am rollover) */
 function getToday(): string {
-  return new Date().toISOString().split('T')[0];
+  return dateKey(new Date());
 }
 
 const DEFAULT_NEW_CARDS_PER_DAY = 20;

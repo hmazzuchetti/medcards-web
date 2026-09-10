@@ -7,6 +7,7 @@ const TEST_NAME = 'Playwright Test';
 test.describe('Signup Flow', () => {
   test('validação — nome vazio', async ({ page }) => {
     await page.goto('/signup');
+    await page.waitForLoadState('networkidle'); // wait for React hydration (WebKit fills before it otherwise)
     // submete sem preencher nada
     await page.click('button[type="submit"]');
     const err = page.locator('[role="alert"]:not(#__next-route-announcer__)').first();
@@ -16,6 +17,7 @@ test.describe('Signup Flow', () => {
 
   test('validação — senhas não coincidem', async ({ page }) => {
     await page.goto('/signup');
+    await page.waitForLoadState('networkidle'); // wait for React hydration (WebKit fills before it otherwise)
     await page.fill('input[type="text"]', TEST_NAME);
     await page.fill('input[type="email"]', TEST_EMAIL);
     // Fill first password field (id="password")
@@ -31,6 +33,7 @@ test.describe('Signup Flow', () => {
 
   test('formulário completo mostra email de confirmação ou redireciona', async ({ page }) => {
     await page.goto('/signup');
+    await page.waitForLoadState('networkidle'); // wait for React hydration (WebKit fills before it otherwise)
 
     await page.fill('input[type="text"]', TEST_NAME);
     await page.fill('input[type="email"]', TEST_EMAIL);
@@ -51,6 +54,7 @@ test.describe('Signup Flow', () => {
 test.describe('Login Flow', () => {
   test('campos vazios mostram erro', async ({ page }) => {
     await page.goto('/login');
+    await page.waitForLoadState('networkidle'); // wait for React hydration (WebKit fills before it otherwise)
     await page.click('button[type="submit"]');
     const err = page.locator('[role="alert"]:not(#__next-route-announcer__)').first();
     await expect(err).toBeVisible();
@@ -58,6 +62,7 @@ test.describe('Login Flow', () => {
 
   test('senha curta mostra erro', async ({ page }) => {
     await page.goto('/login');
+    await page.waitForLoadState('networkidle'); // wait for React hydration (WebKit fills before it otherwise)
     await page.fill('input[type="email"]', 'test@example.com');
     await page.fill('input[type="password"]', '123');
     await page.click('button[type="submit"]');
@@ -68,6 +73,7 @@ test.describe('Login Flow', () => {
 
   test('credenciais erradas mostram erro do servidor', async ({ page }) => {
     await page.goto('/login');
+    await page.waitForLoadState('networkidle'); // wait for React hydration (WebKit fills before it otherwise)
     await page.fill('input[type="email"]', 'naoexiste@medcards.test');
     await page.fill('input[type="password"]', 'SenhaErrada123!');
     await page.click('button[type="submit"]');
@@ -78,6 +84,7 @@ test.describe('Login Flow', () => {
 
   test('rota protegida redireciona pra login', async ({ page }) => {
     await page.goto('/dashboard');
+    await page.waitForLoadState('networkidle'); // wait for React hydration (WebKit fills before it otherwise)
     await page.waitForURL(/\/login/, { timeout: 8000 });
     expect(page.url()).toContain('/login');
   });
@@ -86,12 +93,14 @@ test.describe('Login Flow', () => {
 test.describe('Navegação', () => {
   test('/ sem sessão vai pra login', async ({ page }) => {
     await page.goto('/');
+    await page.waitForLoadState('networkidle'); // wait for React hydration (WebKit fills before it otherwise)
     await page.waitForURL(/\/(login|dashboard)/, { timeout: 8000 });
     expect(page.url()).toMatch(/\/(login|dashboard)/);
   });
 
   test('link signup ↔ login funciona', async ({ page }) => {
     await page.goto('/login');
+    await page.waitForLoadState('networkidle'); // wait for React hydration (WebKit fills before it otherwise)
     await page.click('a[href="/signup"]');
     await expect(page).toHaveURL(/\/signup/);
     await page.click('a[href="/login"]');

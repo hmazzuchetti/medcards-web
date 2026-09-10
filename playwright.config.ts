@@ -1,4 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
+import { config as loadEnv } from 'dotenv';
+
+// Make NEXT_PUBLIC_SUPABASE_* available to tests that talk to Supabase directly
+loadEnv({ path: '.env.local' });
 
 export default defineConfig({
   testDir: './tests',
@@ -6,29 +10,45 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
-  reporter: 'html',
+  reporter: [['list'], ['html', { open: 'never' }]],
+  timeout: 60_000,
   use: {
     baseURL: 'http://localhost:3000',
+    actionTimeout: 15_000,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
   projects: [
+    // Pure unit tests (no browser): scheduler, queue logic
+    {
+      name: 'unit',
+      testMatch: /tests\/unit\/.*\.spec\.ts/,
+    },
+    // UI tests (auth pages, mocked study flow)
     {
       name: 'Mobile Chrome',
-      use: {
-        ...devices['Pixel 5'],
-      },
+      testMatch: /tests\/[^/]+\.spec\.ts/,
+      use: { ...devices['Pixel 5'] },
     },
     {
       name: 'Mobile Safari',
-      use: {
-        ...devices['iPhone 12'],
-      },
+      testMatch: /tests\/[^/]+\.spec\.ts/,
+      use: { ...devices['iPhone 12'] },
+    },
+    // End-to-end against the real Supabase project (creates a throwaway user)
+    {
+      name: 'e2e',
+      testMatch: /tests\/e2e\/.*\.spec\.ts/,
+      use: { ...devices['Pixel 5'] },
+      fullyParallel: false,
+      workers: 1,
+      timeout: 180_000,
     },
   ],
-  // webServer: {
-  //   command: 'npm run dev',
-  //   url: 'http://localhost:3000',
-  //   reuseExistingServer: !process.env.CI,
-  // },
+  webServer: {
+    command: 'npm run dev',
+    url: 'http://localhost:3000/login',
+    reuseExistingServer: !process.env.CI,
+    timeout: 120_000,
+  },
 });

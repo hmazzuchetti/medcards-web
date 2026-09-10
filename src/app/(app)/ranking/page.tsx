@@ -132,6 +132,7 @@ export default function RankingPage() {
                 return (
                   <motion.div
                     key={entry.user_id}
+                    data-testid="ranking-row"
                     initial={{ opacity: 0, x: -24 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{

@@ -3,6 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Auth — Login page', () => {
   test('has login form with email and password fields', async ({ page }) => {
     await page.goto('/login');
+    await page.waitForLoadState('networkidle'); // wait for React hydration (WebKit fills before it otherwise)
 
     // Check page title / logo
     await expect(page.locator('h1')).toContainText('MedCards');
@@ -23,6 +24,7 @@ test.describe('Auth — Login page', () => {
 
   test('shows validation error for empty email', async ({ page }) => {
     await page.goto('/login');
+    await page.waitForLoadState('networkidle'); // wait for React hydration (WebKit fills before it otherwise)
 
     const submitButton = page.locator('button[type="submit"]');
     await submitButton.click();
@@ -34,6 +36,7 @@ test.describe('Auth — Login page', () => {
 
   test('shows validation error for short password', async ({ page }) => {
     await page.goto('/login');
+    await page.waitForLoadState('networkidle'); // wait for React hydration (WebKit fills before it otherwise)
 
     await page.fill('input[type="email"]', 'test@example.com');
     await page.fill('input[type="password"]', '123');
@@ -48,6 +51,7 @@ test.describe('Auth — Login page', () => {
 
   test('has link to signup page', async ({ page }) => {
     await page.goto('/login');
+    await page.waitForLoadState('networkidle'); // wait for React hydration (WebKit fills before it otherwise)
 
     const signupLink = page.locator('a[href="/signup"]');
     await expect(signupLink).toBeVisible();
@@ -57,6 +61,7 @@ test.describe('Auth — Login page', () => {
 test.describe('Auth — Signup page', () => {
   test('has signup form with all required fields', async ({ page }) => {
     await page.goto('/signup');
+    await page.waitForLoadState('networkidle'); // wait for React hydration (WebKit fills before it otherwise)
 
     // Check page title
     await expect(page.locator('h1')).toContainText('MedCards');
@@ -77,6 +82,7 @@ test.describe('Auth — Signup page', () => {
 
   test('has link back to login page', async ({ page }) => {
     await page.goto('/signup');
+    await page.waitForLoadState('networkidle'); // wait for React hydration (WebKit fills before it otherwise)
 
     const loginLink = page.locator('a[href="/login"]');
     await expect(loginLink).toBeVisible();

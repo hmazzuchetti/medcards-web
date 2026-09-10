@@ -2,10 +2,12 @@
 
 import { useState, useCallback, type FormEvent } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 
 export function SignupForm() {
+  const router = useRouter();
   const { signUp, isLoading } = useAuthStore();
 
   const [fullName, setFullName] = useState('');
@@ -43,11 +45,15 @@ export function SignupForm() {
 
       if (result.error) {
         setError(result.error);
+      } else if (useAuthStore.getState().session) {
+        // Email confirmation disabled: the session is already active → go study
+        router.push('/');
+        router.refresh();
       } else {
         setSuccess(true);
       }
     },
-    [fullName, email, password, confirmPassword, signUp]
+    [fullName, email, password, confirmPassword, signUp, router]
   );
 
   if (success) {

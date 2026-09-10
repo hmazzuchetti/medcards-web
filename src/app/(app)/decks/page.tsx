@@ -171,7 +171,8 @@ export default function DecksPage() {
                 <div className="flex flex-1 items-center gap-3">
                   <div className="flex flex-1 flex-col items-start">
                     <Link
-                      href={`/search?q=${encodeURIComponent(category.name)}`}
+                      href={`/search?category=${category.id}`}
+                      data-testid={`category-link-${category.id}`}
                       className="text-sm font-semibold text-white hover:text-[#00d9ff] transition-colors"
                       onClick={(e) => e.stopPropagation()}
                     >
@@ -191,6 +192,9 @@ export default function DecksPage() {
                   </div>
                   <button
                     onClick={() => toggleExpanded(category.id)}
+                    data-testid={`category-expand-${category.id}`}
+                    aria-expanded={isExpanded}
+                    aria-label={isExpanded ? "Recolher" : "Expandir"}
                     className="p-1"
                   >
                     <motion.div
@@ -205,6 +209,7 @@ export default function DecksPage() {
                 {/* Toggle all */}
                 <button
                   onClick={() => handleToggleCategory(subcatIds)}
+                  data-testid={`category-toggle-${category.id}`}
                   className={`rounded-full px-2.5 py-1 text-[10px] font-medium transition-colors ${
                     allEnabled
                       ? "bg-[#e94560]/20 text-[#e94560]"
@@ -247,6 +252,9 @@ export default function DecksPage() {
                           {/* Toggle */}
                           <button
                             onClick={() => toggleSubcategory(sub.id)}
+                            data-testid={`subcategory-toggle-${sub.id}`}
+                            aria-pressed={enabled}
+                            aria-label={`${enabled ? "Desativar" : "Ativar"} ${sub.name}`}
                             className={`h-5 w-9 rounded-full transition-colors ${
                               enabled ? "bg-[#e94560]" : "bg-[#252a4a]"
                             }`}
@@ -260,13 +268,15 @@ export default function DecksPage() {
 
                           {/* Name & info */}
                           <div className="flex flex-1 flex-col">
-                            <span
-                              className={`text-sm ${
+                            <Link
+                              href={`/search?folder=${sub.id}`}
+                              data-testid={`subcategory-link-${sub.id}`}
+                              className={`text-sm hover:text-[#00d9ff] transition-colors ${
                                 enabled ? "text-white" : "text-[#666]"
                               }`}
                             >
                               {sub.name}
-                            </span>
+                            </Link>
                             <div className="flex gap-2 text-[10px]">
                               <span className="text-[#a0a0a0]">
                                 {sub.totalCards} cards
@@ -284,15 +294,19 @@ export default function DecksPage() {
                             <div className="flex items-center gap-1">
                               <button
                                 onClick={() => changeNewCards(sub.id, -5)}
+                                data-testid={`new-cards-minus-${sub.id}`}
+                                aria-label="Menos 5 cards novos por dia"
                                 className="flex h-6 w-6 items-center justify-center rounded-md bg-[#252a4a] text-[#a0a0a0] active:bg-[#252a4a]/70"
                               >
                                 <Minus className="h-3 w-3" />
                               </button>
-                              <span className="w-8 text-center text-xs font-medium text-white">
+                              <span className="w-8 text-center text-xs font-medium text-white" data-testid={`new-cards-value-${sub.id}`}>
                                 {newPerDay}
                               </span>
                               <button
                                 onClick={() => changeNewCards(sub.id, 5)}
+                                data-testid={`new-cards-plus-${sub.id}`}
+                                aria-label="Mais 5 cards novos por dia"
                                 className="flex h-6 w-6 items-center justify-center rounded-md bg-[#252a4a] text-[#a0a0a0] active:bg-[#252a4a]/70"
                               >
                                 <Plus className="h-3 w-3" />

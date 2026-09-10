@@ -8,17 +8,16 @@ interface StatsCardProps {
   value: string | number;
   color?: string;
   delay?: number;
+  testId?: string;
 }
 
-function AnimatedNumber({ target, color }: { target: number; color: string }) {
+function AnimatedNumber({ target, color, testId }: { target: number; color: string; testId?: string }) {
   const [display, setDisplay] = useState(0);
   const rafRef = useRef<number | null>(null);
   const startRef = useRef<number | null>(null);
   const duration = 600;
 
   useEffect(() => {
-    if (target === 0) { setDisplay(0); return; }
-
     const start = () => {
       startRef.current = performance.now();
       const step = (now: number) => {
@@ -41,13 +40,13 @@ function AnimatedNumber({ target, color }: { target: number; color: string }) {
   }, [target]);
 
   return (
-    <span className="mt-1 text-2xl font-bold" style={{ color }}>
+    <span className="mt-1 text-2xl font-bold" style={{ color }} data-testid={testId}>
       {display}
     </span>
   );
 }
 
-export function StatsCard({ label, value, color = "#ffffff", delay = 0 }: StatsCardProps) {
+export function StatsCard({ label, value, color = "#ffffff", delay = 0, testId }: StatsCardProps) {
   const isNumber = typeof value === "number";
 
   return (
@@ -59,9 +58,9 @@ export function StatsCard({ label, value, color = "#ffffff", delay = 0 }: StatsC
     >
       <span className="text-xs font-medium text-[#a0a0a0]">{label}</span>
       {isNumber ? (
-        <AnimatedNumber target={value as number} color={color} />
+        <AnimatedNumber target={value as number} color={color} testId={testId} />
       ) : (
-        <span className="mt-1 text-2xl font-bold" style={{ color }}>
+        <span className="mt-1 text-2xl font-bold" style={{ color }} data-testid={testId}>
           {value}
         </span>
       )}

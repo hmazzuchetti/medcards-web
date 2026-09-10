@@ -1,36 +1,64 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MedCards Web
 
-## Getting Started
+Flashcards de medicina com repetição espaçada, no padrão do **Anki**. Versão web (Next.js 16 + Supabase) do app React Native em `../medcards`.
 
-First, run the development server:
+## Rodando localmente
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install --legacy-peer-deps
+cp .env.example .env.local   # ou crie o arquivo com as duas variáveis abaixo
+npm run dev                  # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`.env.local`:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+NEXT_PUBLIC_SUPABASE_URL=https://<projeto>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key>
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+> `--legacy-peer-deps` é necessário porque `@cloudflare/next-on-pages` ainda declara peer em `next@<=15`.
 
-## Learn More
+## Estrutura
 
-To learn more about Next.js, take a look at the following resources:
+| Pasta | O que tem |
+|---|---|
+| `src/app/(app)/page.tsx` | Aba **Estudar**: abre direto no card (baralho único das pastas ativas) |
+| `src/app/(app)/study/[categoryId]` · `study/folder/[subcategoryId]` | Estudo por categoria / por pasta |
+| `src/app/(app)/decks` | **Pastas**: liga/desliga subcategorias, novos por dia; nomes abrem a Busca filtrada |
+| `src/app/(app)/search` | **Buscar**: texto livre e/ou filtro por pasta (`?folder=` / `?category=`) |
+| `src/lib/scheduler.ts` | Scheduler Anki (learning steps, ease, lapses, previews dos botões) |
+| `src/hooks/useStudySession.ts` | Fila da sessão: aprendendo → revisão → novos, learn-ahead, contadores |
+| `src/components/study/study-session.tsx` | Tela do card: toque em qualquer lugar revela; esquerda = Errei, direita = Bom; atalhos `espaço`/`1-4` |
+| `src/stores/review-store.ts` | Estado local (zustand + localStorage) e sync com `user_card_state` / `daily_stats` |
+| `src/proxy.ts` | Proteção de rotas (Next 16 chama o middleware de *proxy*; precisa ficar em `src/`) |
+| `docs/` | Feedback do sócio (transcrições dos vídeos) e SQL de correções |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Scheduler (igual ao Anki, opções padrão)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Card novo: passos `1m` → `10m` → gradua com `1d`; **Fácil** gradua direto com `4d`.
+- Botões em card novo: `1m / 6m / 10m / 4d` (Errei / Difícil / Bom / Fácil).
+- Revisão: Difícil ×1.2 (ease −15%), Bom ×ease, Fácil ×ease×1.3 (ease +15%); Errei → relearning `10m`, ease −20%, volta com `1d`.
+- Cards em aprendizado voltam **na mesma sessão** quando o passo vence (learn-ahead de 20 min).
+- O dia de estudo vira às 4h da manhã.
 
-## Deploy on Vercel
+Tabela completa de casos em `tests/unit/scheduler.spec.ts`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Testes
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run test:unit   # scheduler (sem browser)
+npm run test:ui     # páginas de auth e rotas protegidas (Pixel 5)
+npm run test:e2e    # fluxo completo contra o Supabase real: cadastro → pastas → estudo → perfil → banco → ranking → busca
+npm test            # tudo (inclui iPhone/WebKit)
+```
+
+O Playwright sobe o `next dev` sozinho (`webServer` no `playwright.config.ts`). O E2E cria um usuário `playwright+e2e<timestamp>@medcards.test` a cada execução; apague-os pelo painel do Supabase de tempos em tempos.
+
+## Banco (Supabase)
+
+Schema e RLS estão em `../medcards/scripts/*.sql`. Correção pendente: `docs/sql/fix_leaderboard_search_path.sql` (RPCs `get_leaderboard`/`get_my_rank` quebradas por `search_path = ''`).
+
+## Deploy
+
+O app de teste roda em `medcards.briangroup.uk` (EC2 do Brian, atrás do Cloudflare). Fazer `git pull` lá e reiniciar o `next start` (ou `next dev`) após o merge.
