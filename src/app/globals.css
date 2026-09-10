@@ -160,16 +160,23 @@
 
 /* Smooth page transitions */
 .page-transition {
-  animation: fadeIn 0.2s ease-out;
+  animation: fadeSlideIn 0.25s ease-out both;
 }
 
-@keyframes fadeIn {
+@keyframes fadeSlideIn {
   from {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .page-transition {
+    animation: none;
   }
 }

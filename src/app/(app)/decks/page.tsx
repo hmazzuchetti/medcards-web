@@ -1,61 +1,73 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { ChevronDown, ChevronRight, Minus, Plus } from "lucide-react";
+import { useState, useCallback, useEffect } from "react";
+import { ChevronRight, Minus, Plus } from "lucide-react";
+import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
+import { fetchSubcategoriesWithCards, type SubcategoryWithCards } from "@/services/cards.service";
+import { useReviewStore } from "@/stores/review-store";
+import { useDeckStore } from "@/stores/deck-store";
 
-// --- Mock Data ---
-interface MockSubcategory {
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface CategoryGroup {
   id: string;
   name: string;
-  cardCount: number;
-  dueCount: number;
-  enabled: boolean;
-  newCardsPerDay: number;
+  subcategories: SubcategoryWithCards[];
 }
 
-interface MockCategory {
-  id: string;
-  name: string;
-  icon: string;
-  subcategories: MockSubcategory[];
-}
-
-const INITIAL_CATEGORIES: MockCategory[] = [
-  {
-    id: "c1",
-    name: "Neurologia",
-    icon: "🧠",
-    subcategories: [
-      { id: "s1", name: "Anatomia do SNC", cardCount: 45, dueCount: 8, enabled: true, newCardsPerDay: 20 },
-      { id: "s2", name: "Neurofisiologia", cardCount: 62, dueCount: 0, enabled: true, newCardsPerDay: 15 },
-      { id: "s3", name: "Neuropatologias", cardCount: 38, dueCount: 12, enabled: false, newCardsPerDay: 20 },
-    ],
-  },
-  {
-    id: "c2",
-    name: "Cardiologia",
-    icon: "❤️",
-    subcategories: [
-      { id: "s4", name: "Anatomia Cardíaca", cardCount: 30, dueCount: 5, enabled: true, newCardsPerDay: 20 },
-      { id: "s5", name: "Arritmias", cardCount: 55, dueCount: 0, enabled: true, newCardsPerDay: 10 },
-      { id: "s6", name: "Valvulopatias", cardCount: 28, dueCount: 3, enabled: true, newCardsPerDay: 20 },
-    ],
-  },
-  {
-    id: "c3",
-    name: "Farmacologia",
-    icon: "💊",
-    subcategories: [
-      { id: "s7", name: "Farmacocinética", cardCount: 40, dueCount: 0, enabled: false, newCardsPerDay: 20 },
-      { id: "s8", name: "Antibióticos", cardCount: 72, dueCount: 15, enabled: false, newCardsPerDay: 20 },
-      { id: "s9", name: "Anti-hipertensivos", cardCount: 35, dueCount: 0, enabled: false, newCardsPerDay: 20 },
-    ],
-  },
-];
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function DecksPage() {
-  const [categories, setCategories] = useState<MockCategory[]>(INITIAL_CATEGORIES);
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set(["c1"]));
+  const [groups, setGroups] = useState<CategoryGroup[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
+  const { getDueCount } = useReviewStore();
+  const { isSubcategoryEnabled, toggleSubcategory, toggleCategory, getNewCardsPerDay, setNewCardsPerDay } = useDeckStore();
+
+  // Load subcategories from Supabase
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      setIsLoading(true);
+      try {
+        const subcats = await fetchSubcategoriesWithCards();
+
+        if (cancelled) return;
+
+        // Group by category_id — preserve category name from categoryName field
+        const groupMap: Record<string, CategoryGroup> = {};
+        for (const sub of subcats) {
+          if (!groupMap[sub.category_id]) {
+            groupMap[sub.category_id] = {
+              id: sub.category_id,
+              name: sub.categoryName,
+              subcategories: [],
+            };
+          }
+          groupMap[sub.category_id].subcategories.push(sub);
+        }
+
+        const sorted = Object.values(groupMap).sort((a, b) =>
+          a.name.localeCompare(b.name, "pt-BR")
+        );
+
+        setGroups(sorted);
+
+        // Auto-expand first category
+        if (sorted.length > 0) {
+          setExpandedIds(new Set([sorted[0].id]));
+        }
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    }
+
+    load();
+    return () => { cancelled = true; };
+  }, []);
 
   const toggleExpanded = useCallback((id: string) => {
     setExpandedIds((prev) => {
@@ -66,45 +78,63 @@ export default function DecksPage() {
     });
   }, []);
 
-  const toggleCategoryAll = useCallback((categoryId: string, enabled: boolean) => {
-    setCategories((prev) =>
-      prev.map((cat) =>
-        cat.id === categoryId
-          ? {
-              ...cat,
-              subcategories: cat.subcategories.map((sub) => ({
-                ...sub,
-                enabled,
-              })),
-            }
-          : cat
-      )
-    );
-  }, []);
+  const handleToggleCategory = useCallback(
+    (subcategoryIds: string[]) => {
+      toggleCategory(subcategoryIds);
+    },
+    [toggleCategory]
+  );
 
-  const toggleSubcategory = useCallback((subcategoryId: string) => {
-    setCategories((prev) =>
-      prev.map((cat) => ({
-        ...cat,
-        subcategories: cat.subcategories.map((sub) =>
-          sub.id === subcategoryId ? { ...sub, enabled: !sub.enabled } : sub
-        ),
-      }))
-    );
-  }, []);
+  const changeNewCards = useCallback(
+    (subcategoryId: string, delta: number) => {
+      const current = getNewCardsPerDay(subcategoryId);
+      setNewCardsPerDay(subcategoryId, current + delta);
+    },
+    [getNewCardsPerDay, setNewCardsPerDay]
+  );
 
-  const changeNewCards = useCallback((subcategoryId: string, delta: number) => {
-    setCategories((prev) =>
-      prev.map((cat) => ({
-        ...cat,
-        subcategories: cat.subcategories.map((sub) =>
-          sub.id === subcategoryId
-            ? { ...sub, newCardsPerDay: Math.max(0, Math.min(999, sub.newCardsPerDay + delta)) }
-            : sub
-        ),
-      }))
+  // ─── Loading ────────────────────────────────────────────────────────────────
+
+  if (isLoading) {
+    return (
+      <div className="page-transition flex flex-col">
+        <div className="px-4 py-4">
+          <h1 className="text-xl font-bold text-white">Pastas</h1>
+          <p className="mt-1 text-xs text-[#a0a0a0]">
+            Gerencie suas categorias e cards por dia
+          </p>
+        </div>
+        <div className="flex flex-col gap-2 px-4">
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="h-16 animate-pulse rounded-xl bg-[#1a1a2e]"
+            />
+          ))}
+        </div>
+      </div>
     );
-  }, []);
+  }
+
+  // ─── Empty ───────────────────────────────────────────────────────────────────
+
+  if (groups.length === 0) {
+    return (
+      <div className="page-transition flex flex-col">
+        <div className="px-4 py-4">
+          <h1 className="text-xl font-bold text-white">Pastas</h1>
+        </div>
+        <div className="flex flex-col items-center py-16 text-center">
+          <span className="text-4xl">📚</span>
+          <p className="mt-3 text-sm text-[#a0a0a0]">
+            Nenhuma subcategoria encontrada
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Main ────────────────────────────────────────────────────────────────────
 
   return (
     <div className="page-transition flex flex-col">
@@ -118,44 +148,63 @@ export default function DecksPage() {
 
       {/* Category List */}
       <div className="flex flex-col gap-2 px-4 pb-8">
-        {categories.map((category) => {
+        {groups.map((category, groupIndex) => {
           const isExpanded = expandedIds.has(category.id);
-          const enabledCount = category.subcategories.filter((s) => s.enabled).length;
-          const allEnabled = enabledCount === category.subcategories.length;
-          const totalDue = category.subcategories.reduce((sum, s) => sum + s.dueCount, 0);
+          const subcatIds = category.subcategories.map((s) => s.id);
+          const enabledCount = subcatIds.filter((id) => isSubcategoryEnabled(id)).length;
+          const allEnabled = enabledCount === subcatIds.length;
+          const totalDue = category.subcategories.reduce(
+            (sum, s) => sum + getDueCount(s.cardIds),
+            0
+          );
 
           return (
-            <div key={category.id} className="overflow-hidden rounded-xl bg-[#1a1a2e]">
+            <motion.div
+              key={category.id}
+              className="overflow-hidden rounded-xl bg-[#1a1a2e]"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, ease: "easeOut", delay: groupIndex * 0.07 }}
+            >
               {/* Category Header */}
               <div className="flex items-center gap-3 p-4">
-                <button
-                  onClick={() => toggleExpanded(category.id)}
-                  className="flex flex-1 items-center gap-3"
-                >
-                  <span className="text-xl">{category.icon}</span>
+                <div className="flex flex-1 items-center gap-3">
                   <div className="flex flex-1 flex-col items-start">
-                    <span className="text-sm font-semibold text-white">
+                    <Link
+                      href={`/search?q=${encodeURIComponent(category.name)}`}
+                      className="text-sm font-semibold text-white hover:text-[#00d9ff] transition-colors"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       {category.name}
-                    </span>
-                    <span className="text-[10px] text-[#a0a0a0]">
-                      {enabledCount}/{category.subcategories.length} ativas
+                    </Link>
+                    <button
+                      onClick={() => toggleExpanded(category.id)}
+                      className="text-[10px] text-[#a0a0a0] text-left"
+                    >
+                      {enabledCount}/{subcatIds.length} ativas
                       {totalDue > 0 && (
                         <span className="ml-2 text-[#e94560]">
                           {totalDue} pendentes
                         </span>
                       )}
-                    </span>
+                    </button>
                   </div>
-                  {isExpanded ? (
-                    <ChevronDown className="h-4 w-4 text-[#666]" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4 text-[#666]" />
-                  )}
-                </button>
+                  <button
+                    onClick={() => toggleExpanded(category.id)}
+                    className="p-1"
+                  >
+                    <motion.div
+                      animate={{ rotate: isExpanded ? 90 : 0 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <ChevronRight className="h-4 w-4 text-[#666]" />
+                    </motion.div>
+                  </button>
+                </div>
 
                 {/* Toggle all */}
                 <button
-                  onClick={() => toggleCategoryAll(category.id, !allEnabled)}
+                  onClick={() => handleToggleCategory(subcatIds)}
                   className={`rounded-full px-2.5 py-1 text-[10px] font-medium transition-colors ${
                     allEnabled
                       ? "bg-[#e94560]/20 text-[#e94560]"
@@ -166,74 +215,97 @@ export default function DecksPage() {
                 </button>
               </div>
 
-              {/* Subcategories */}
-              {isExpanded && (
-                <div className="border-t border-[#252a4a]">
-                  {category.subcategories.map((sub) => (
-                    <div
-                      key={sub.id}
-                      className="flex items-center gap-3 border-b border-[#252a4a]/50 px-4 py-3 last:border-b-0"
-                    >
-                      {/* Toggle */}
-                      <button
-                        onClick={() => toggleSubcategory(sub.id)}
-                        className={`h-5 w-9 rounded-full transition-colors ${
-                          sub.enabled ? "bg-[#e94560]" : "bg-[#252a4a]"
-                        }`}
-                      >
-                        <div
-                          className={`h-4 w-4 rounded-full bg-white transition-transform ${
-                            sub.enabled ? "translate-x-4" : "translate-x-0.5"
-                          }`}
-                        />
-                      </button>
+              {/* Subcategories — AnimatePresence for height animation */}
+              <AnimatePresence initial={false}>
+                {isExpanded && (
+                  <motion.div
+                    key="subcats"
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.25, ease: "easeInOut" }}
+                    style={{ overflow: "hidden" }}
+                    className="border-t border-[#252a4a]"
+                  >
+                    {category.subcategories.map((sub, subIndex) => {
+                      const enabled = isSubcategoryEnabled(sub.id);
+                      const dueCount = getDueCount(sub.cardIds);
+                      const newPerDay = getNewCardsPerDay(sub.id);
 
-                      {/* Name & info */}
-                      <div className="flex flex-1 flex-col">
-                        <span
-                          className={`text-sm ${
-                            sub.enabled ? "text-white" : "text-[#666]"
-                          }`}
+                      return (
+                        <motion.div
+                          key={sub.id}
+                          initial={{ opacity: 0, x: -12 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{
+                            duration: 0.22,
+                            ease: "easeOut",
+                            delay: subIndex * 0.04,
+                          }}
+                          className="flex items-center gap-3 border-b border-[#252a4a]/50 px-4 py-3 last:border-b-0"
                         >
-                          {sub.name}
-                        </span>
-                        <div className="flex gap-2 text-[10px]">
-                          <span className="text-[#a0a0a0]">
-                            {sub.cardCount} cards
-                          </span>
-                          {sub.dueCount > 0 && (
-                            <span className="text-[#e94560]">
-                              {sub.dueCount} pendentes
-                            </span>
-                          )}
-                        </div>
-                      </div>
+                          {/* Toggle */}
+                          <button
+                            onClick={() => toggleSubcategory(sub.id)}
+                            className={`h-5 w-9 rounded-full transition-colors ${
+                              enabled ? "bg-[#e94560]" : "bg-[#252a4a]"
+                            }`}
+                          >
+                            <div
+                              className={`h-4 w-4 rounded-full bg-white transition-transform ${
+                                enabled ? "translate-x-4" : "translate-x-0.5"
+                              }`}
+                            />
+                          </button>
 
-                      {/* New cards stepper */}
-                      {sub.enabled && (
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => changeNewCards(sub.id, -5)}
-                            className="flex h-6 w-6 items-center justify-center rounded-md bg-[#252a4a] text-[#a0a0a0] active:bg-[#252a4a]/70"
-                          >
-                            <Minus className="h-3 w-3" />
-                          </button>
-                          <span className="w-8 text-center text-xs font-medium text-white">
-                            {sub.newCardsPerDay}
-                          </span>
-                          <button
-                            onClick={() => changeNewCards(sub.id, 5)}
-                            className="flex h-6 w-6 items-center justify-center rounded-md bg-[#252a4a] text-[#a0a0a0] active:bg-[#252a4a]/70"
-                          >
-                            <Plus className="h-3 w-3" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                          {/* Name & info */}
+                          <div className="flex flex-1 flex-col">
+                            <span
+                              className={`text-sm ${
+                                enabled ? "text-white" : "text-[#666]"
+                              }`}
+                            >
+                              {sub.name}
+                            </span>
+                            <div className="flex gap-2 text-[10px]">
+                              <span className="text-[#a0a0a0]">
+                                {sub.totalCards} cards
+                              </span>
+                              {dueCount > 0 && (
+                                <span className="text-[#e94560]">
+                                  {dueCount} pendentes
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* New cards stepper */}
+                          {enabled && (
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => changeNewCards(sub.id, -5)}
+                                className="flex h-6 w-6 items-center justify-center rounded-md bg-[#252a4a] text-[#a0a0a0] active:bg-[#252a4a]/70"
+                              >
+                                <Minus className="h-3 w-3" />
+                              </button>
+                              <span className="w-8 text-center text-xs font-medium text-white">
+                                {newPerDay}
+                              </span>
+                              <button
+                                onClick={() => changeNewCards(sub.id, 5)}
+                                className="flex h-6 w-6 items-center justify-center rounded-md bg-[#252a4a] text-[#a0a0a0] active:bg-[#252a4a]/70"
+                              >
+                                <Plus className="h-3 w-3" />
+                              </button>
+                            </div>
+                          )}
+                        </motion.div>
+                      );
+                    })}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
           );
         })}
       </div>

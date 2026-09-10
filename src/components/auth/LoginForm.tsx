@@ -1,13 +1,11 @@
 'use client';
 
 import { useState, useCallback, type FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 
 export function LoginForm() {
-  const router = useRouter();
   const { signIn, isLoading } = useAuthStore();
 
   const [email, setEmail] = useState('');
@@ -34,11 +32,10 @@ export function LoginForm() {
       if (result.error) {
         setError(result.error);
       } else {
-        router.push('/');
-        router.refresh();
+        window.location.href = '/';
       }
     },
-    [email, password, signIn, router]
+    [email, password, signIn]
   );
 
   return (

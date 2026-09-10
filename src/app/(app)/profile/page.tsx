@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 import { Trophy, LogOut, Pencil, Check, X, Wifi, WifiOff } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import { StatsCard } from "@/components/common/stats-card";
 import { useAuthStore } from "@/store/authStore";
 import { useReviewStore } from "@/stores/review-store";
@@ -65,7 +66,6 @@ export default function ProfilePage() {
       if (!error) {
         setDisplayName(trimmed);
         setIsEditing(false);
-        // Refresh display name in auth store
         await fetchDisplayName();
       } else {
         console.error("Failed to update display name:", error);
@@ -97,6 +97,8 @@ export default function ProfilePage() {
   const nameToShow = displayName || user?.email?.split("@")[0] || "Usuário";
   const emailToShow = user?.email ?? "";
 
+  const easeBarWidth = `${(stats.averageEase / 4) * 100}%`;
+
   return (
     <div className="page-transition flex flex-col pb-8">
       {/* Header */}
@@ -105,7 +107,12 @@ export default function ProfilePage() {
       </div>
 
       {/* Avatar & name */}
-      <div className="flex flex-col items-center px-4">
+      <motion.div
+        className="flex flex-col items-center px-4"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
+      >
         <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#e94560] text-3xl font-bold text-white">
           {getInitial(nameToShow)}
         </div>
@@ -158,33 +165,44 @@ export default function ProfilePage() {
           {syncIcon}
           <span className="text-[10px] text-[#a0a0a0]">{syncLabel}</span>
         </div>
-      </div>
+      </motion.div>
 
       {/* Points card */}
-      <Link
-        href="/ranking"
-        className="mx-4 mt-6 flex items-center gap-3 rounded-xl bg-[#1a1a2e] p-4"
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: "easeOut", delay: 0.08 }}
       >
-        <Trophy className="h-8 w-8 text-[#ff9f43]" />
-        <div className="flex flex-1 flex-col">
-          <span className="text-xs text-[#a0a0a0]">Seus pontos</span>
-          <span className="text-xl font-bold text-[#00d9ff]">
-            {points.toLocaleString()}
-          </span>
-        </div>
-        <span className="text-xs text-[#666]">Ver ranking →</span>
-      </Link>
+        <Link
+          href="/ranking"
+          className="mx-4 mt-6 flex items-center gap-3 rounded-xl bg-[#1a1a2e] p-4"
+        >
+          <Trophy className="h-8 w-8 text-[#ff9f43]" />
+          <div className="flex flex-1 flex-col">
+            <span className="text-xs text-[#a0a0a0]">Seus pontos</span>
+            <span className="text-xl font-bold text-[#00d9ff]">
+              {points.toLocaleString()}
+            </span>
+          </div>
+          <span className="text-xs text-[#666]">Ver ranking →</span>
+        </Link>
+      </motion.div>
 
       {/* Stats grid */}
       <div className="mt-4 grid grid-cols-2 gap-3 px-4">
-        <StatsCard label="Hoje" value={stats.todayReviews} color="#e94560" />
-        <StatsCard label="Sequência" value={`${stats.streak}d`} color="#ff9f43" />
-        <StatsCard label="Aprendidos" value={stats.cardsLearned} color="#00d9ff" />
-        <StatsCard label="Total revisões" value={stats.totalReviews} color="#2979ff" />
+        <StatsCard label="Hoje" value={stats.todayReviews} color="#e94560" delay={0.12} />
+        <StatsCard label="Sequência" value={`${stats.streak}d`} color="#ff9f43" delay={0.2} />
+        <StatsCard label="Aprendidos" value={stats.cardsLearned} color="#00d9ff" delay={0.28} />
+        <StatsCard label="Total revisões" value={stats.totalReviews} color="#2979ff" delay={0.36} />
       </div>
 
       {/* Average ease */}
-      <div className="mx-4 mt-4 rounded-xl bg-[#1a1a2e] p-4">
+      <motion.div
+        className="mx-4 mt-4 rounded-xl bg-[#1a1a2e] p-4"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: "easeOut", delay: 0.44 }}
+      >
         <div className="flex items-center justify-between">
           <span className="text-xs text-[#a0a0a0]">Facilidade média</span>
           <span
@@ -203,22 +221,27 @@ export default function ProfilePage() {
           </span>
           <span className="mb-0.5 text-xs text-[#666]">/ 4.00</span>
         </div>
-        {/* Ease bar */}
+        {/* Ease bar — animated from 0 to actual width */}
         <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#252a4a]">
-          <div
-            className="h-full rounded-full transition-all"
-            style={{
-              width: `${(stats.averageEase / 4) * 100}%`,
-              backgroundColor: getEaseColor(stats.averageEase),
-            }}
+          <motion.div
+            className="h-full rounded-full"
+            style={{ backgroundColor: getEaseColor(stats.averageEase) }}
+            initial={{ width: "0%" }}
+            animate={{ width: easeBarWidth }}
+            transition={{ duration: 0.6, ease: "easeOut", delay: 0.5 }}
           />
         </div>
-      </div>
+      </motion.div>
 
       {/* Logout */}
       <div className="mt-8 px-4">
         {showLogoutConfirm ? (
-          <div className="rounded-xl bg-[#1a1a2e] p-4">
+          <motion.div
+            className="rounded-xl bg-[#1a1a2e] p-4"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.2 }}
+          >
             <p className="text-center text-sm text-white">
               Tem certeza que deseja sair?
             </p>
@@ -236,7 +259,7 @@ export default function ProfilePage() {
                 Sair
               </button>
             </div>
-          </div>
+          </motion.div>
         ) : (
           <button
             onClick={() => setShowLogoutConfirm(true)}

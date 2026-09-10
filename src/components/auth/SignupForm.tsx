@@ -1,13 +1,11 @@
 'use client';
 
 import { useState, useCallback, type FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 
 export function SignupForm() {
-  const router = useRouter();
   const { signUp, isLoading } = useAuthStore();
 
   const [fullName, setFullName] = useState('');
@@ -46,14 +44,10 @@ export function SignupForm() {
       if (result.error) {
         setError(result.error);
       } else {
-        // Supabase may require email confirmation
         setSuccess(true);
-        // Try to redirect; if email confirmation required, show success message
-        router.push('/');
-        router.refresh();
       }
     },
-    [fullName, email, password, confirmPassword, signUp, router]
+    [fullName, email, password, confirmPassword, signUp]
   );
 
   if (success) {

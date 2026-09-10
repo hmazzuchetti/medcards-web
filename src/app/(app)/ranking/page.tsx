@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Trophy, Loader2 } from "lucide-react";
+import { motion } from "framer-motion";
 import { useAuthStore } from "@/store/authStore";
 import { fetchLeaderboard } from "@/services/ranking.service";
 import type { LeaderboardEntry } from "@/types";
@@ -83,7 +84,12 @@ export default function RankingPage() {
         <>
           {/* Your position card */}
           {userEntry && (
-            <div className="mx-4 mb-4 rounded-xl bg-[#252a4a] p-4">
+            <motion.div
+              className="mx-4 mb-4 rounded-xl bg-[#252a4a] p-4"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+            >
               <p className="text-xs text-[#a0a0a0]">Sua posição</p>
               <div className="mt-2 flex items-center gap-3">
                 <span className="text-2xl font-bold text-[#e94560]">
@@ -104,7 +110,7 @@ export default function RankingPage() {
                   )}
                 </div>
               </div>
-            </div>
+            </motion.div>
           )}
 
           {/* Leaderboard table */}
@@ -119,20 +125,39 @@ export default function RankingPage() {
               </div>
 
               {/* Rows */}
-              {leaderboard.map((entry) => {
+              {leaderboard.map((entry, index) => {
                 const isCurrentUser = entry.user_id === currentUserId;
+                const isPodium = entry.rank <= 3;
 
                 return (
-                  <div
+                  <motion.div
                     key={entry.user_id}
+                    initial={{ opacity: 0, x: -24 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{
+                      duration: 0.3,
+                      ease: "easeOut",
+                      delay: index * 0.06,
+                    }}
                     className={`flex items-center gap-2 border-b border-[#252a4a]/30 px-4 py-2.5 last:border-b-0 ${
                       isCurrentUser ? "bg-[#e94560]/10" : ""
                     }`}
                   >
                     {/* Rank */}
                     <span className="w-8 text-center text-xs font-bold">
-                      {entry.rank <= 3 ? (
-                        <span className="text-sm">{getMedal(entry.rank)}</span>
+                      {isPodium ? (
+                        <motion.span
+                          className="text-sm"
+                          animate={{ scale: [1, 1.2, 1] }}
+                          transition={{
+                            duration: 1.8,
+                            repeat: Infinity,
+                            ease: "easeInOut",
+                            delay: entry.rank * 0.3,
+                          }}
+                        >
+                          {getMedal(entry.rank)}
+                        </motion.span>
                       ) : (
                         <span className="text-[#a0a0a0]">{entry.rank}</span>
                       )}
@@ -143,7 +168,7 @@ export default function RankingPage() {
                       className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white"
                       style={{
                         backgroundColor:
-                          entry.rank <= 3
+                          isPodium
                             ? podiumColors[entry.rank - 1]
                             : "#252a4a",
                       }}
@@ -172,7 +197,7 @@ export default function RankingPage() {
                     <span className="w-16 text-right text-xs font-semibold text-[#00d9ff]">
                       {entry.points.toLocaleString()}
                     </span>
-                  </div>
+                  </motion.div>
                 );
               })}
             </div>

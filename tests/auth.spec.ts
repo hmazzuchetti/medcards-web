@@ -27,7 +27,7 @@ test.describe('Auth — Login page', () => {
     const submitButton = page.locator('button[type="submit"]');
     await submitButton.click();
 
-    const errorMessage = page.locator('[role="alert"]');
+    const errorMessage = page.locator('[role="alert"]:not(#__next-route-announcer__)').first();
     await expect(errorMessage).toBeVisible();
     await expect(errorMessage).toContainText('email');
   });
@@ -41,7 +41,7 @@ test.describe('Auth — Login page', () => {
     const submitButton = page.locator('button[type="submit"]');
     await submitButton.click();
 
-    const errorMessage = page.locator('[role="alert"]');
+    const errorMessage = page.locator('[role="alert"]:not(#__next-route-announcer__)').first();
     await expect(errorMessage).toBeVisible();
     await expect(errorMessage).toContainText('senha');
   });
