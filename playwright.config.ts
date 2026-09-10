@@ -44,6 +44,21 @@ export default defineConfig({
       workers: 1,
       timeout: 180_000,
     },
+    // Demo recording with cursor + captions (only when DEMO=1): npm run demo
+    ...(process.env.DEMO
+      ? [
+          {
+            name: 'demo',
+            testMatch: /tests\/demo\/.*\.spec\.ts/,
+            use: {
+              ...devices['Pixel 5'],
+              video: { mode: 'on' as const, size: { width: 393, height: 851 } },
+            },
+            workers: 1,
+            timeout: 600_000,
+          },
+        ]
+      : []),
   ],
   webServer: {
     command: 'npm run dev',

@@ -53,6 +53,18 @@ npm run test:e2e    # fluxo completo contra o Supabase real: cadastro → pastas
 npm test            # tudo (inclui iPhone/WebKit)
 ```
 
+### Vídeo de demonstração
+
+```bash
+npm run demo   # grava tests/demo/record-demo.spec.ts com cursor visível e legendas (Pixel 5)
+```
+
+O `.webm` fica em `test-results/<teste>/video.webm`. Para MP4 (WhatsApp), cortando a faixa cinza do gravador:
+
+```bash
+ffmpeg -i test-results/<teste>/video.webm -vf "crop=392:726:0:0,fps=30" -c:v libx264 -crf 22 -pix_fmt yuv420p -movflags +faststart -an demo.mp4
+```
+
 O Playwright sobe o `next dev` sozinho (`webServer` no `playwright.config.ts`). O E2E cria um usuário `playwright+e2e<timestamp>@medcards.test` a cada execução; apague-os pelo painel do Supabase de tempos em tempos.
 
 ## Banco (Supabase)
